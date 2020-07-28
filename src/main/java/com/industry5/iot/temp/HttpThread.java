@@ -1,5 +1,9 @@
 package com.industry5.iot.temp;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.industry5.iot.temp.domain.Temperature;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -24,8 +28,7 @@ public class HttpThread extends Thread {
 
         try (DataOutputStream dataOutput = new DataOutputStream(socket.getOutputStream());
              InputStreamReader inputStream = new InputStreamReader(socket.getInputStream());
-             BufferedReader reader = new BufferedReader(inputStream))
-        {
+             BufferedReader reader = new BufferedReader(inputStream)) {
 
             HttpRequest httpRequest = parseHttpRequest(reader);
             System.out.println(httpRequest);
@@ -74,7 +77,7 @@ public class HttpThread extends Thread {
     }
 
     private HttpResponse processHttpRequest(HttpRequest req) throws IOException {
-        switch (req.getMethod()){
+        switch (req.getMethod()) {
             case GET:
                 return routeGetRequest(req, controller);
             default:
@@ -84,12 +87,20 @@ public class HttpThread extends Thread {
 
     private HttpResponse routeGetRequest(HttpRequest req, Controller controller) {
 
+        GsonBuilder builder = new GsonBuilder(); // TODO : move out of this place
+        Gson gson = builder.serializeNulls().create();
+
         int responseCode = 200;
         String message = "OK";
         String body;
+        String contentType = "application/json";
 
-        if("/ping".equals(req.getPath())) {
+        if ("/ping".equals(req.getPath())) {
+            contentType = "text/plain";
             body = controller.processPing();
+        } else if ("/temp".equals(req.getPath())) {
+//            body = gson.toJson(controller.listTemperatures().toArray(), Temperature[].class);
+            body = gson.toJson(controller.listTemperatures());
         } else {
             responseCode = 404;
             message = "Not Found";
@@ -100,7 +111,7 @@ public class HttpThread extends Thread {
         List<String> headersList = new ArrayList<>();
         headersList.add("Server: Mantas Java HTTP Server 1.0");
         headersList.add("Date:" + new Date());
-        headersList.add("Content-type: text/html");
+        headersList.add("Content-type: " + contentType);
         headersList.add("Content-length: " + body.length());
         HttpResponse resp = new HttpResponse(responseCode, message, headersList, body);
 

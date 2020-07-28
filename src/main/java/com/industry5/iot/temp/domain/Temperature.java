@@ -11,6 +11,9 @@ public class Temperature {
     private Date dateTime;
     private List<Integer> errorCodes;
 
+    public Temperature() {
+    }
+
     public Temperature(String id, double temperature, String sensorId, Date dateTime, List<Integer> errorCodes) {
         this.id = id;
         this.temperature = temperature;

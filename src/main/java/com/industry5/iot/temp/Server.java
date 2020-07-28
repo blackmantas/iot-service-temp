@@ -1,5 +1,7 @@
 package com.industry5.iot.temp;
 
+import com.industry5.iot.temp.repo.TemperatureRepository;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -17,7 +19,7 @@ public class Server {
             System.exit(1);
         }
 
-        Controller controller = new Controller();
+        Controller controller = new Controller(new TemperatureRepository());
 
         while (true) {
             try {
