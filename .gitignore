@@ -24,3 +24,10 @@ hs_err_pid*
 
 .idea/
 *.iml
+
+# MAC OS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+target/
