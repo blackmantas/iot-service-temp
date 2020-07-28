@@ -8,12 +8,15 @@ import java.util.List;
 import java.util.StringTokenizer;
 
 public class HttpThread extends Thread {
-    private final Socket socket;
     public static final String NL = "\n";
 
-    public HttpThread(Socket socket) {
+    private final Socket socket;
+    private final Controller controller;
+
+    public HttpThread(Socket socket, Controller controller) {
         System.out.println("Starting HTTP thread: " + currentThread().getName());
         this.socket = socket;
+        this.controller = controller;
     }
 
     @Override
@@ -73,20 +76,33 @@ public class HttpThread extends Thread {
     private HttpResponse processHttpRequest(HttpRequest req) throws IOException {
         switch (req.getMethod()){
             case GET:
-                return processGet(req);
+                return routeGetRequest(req, controller);
             default:
                 throw new IOException("Unsupported HTTP method: " + req.getMethod());
         }
     }
 
-    private HttpResponse processGet(HttpRequest req) {
-        String body = "HTML page :) " + req.getPath();
+    private HttpResponse routeGetRequest(HttpRequest req, Controller controller) {
+
+        int responseCode = 200;
+        String message = "OK";
+        String body;
+
+        if("/ping".equals(req.getPath())) {
+            body = controller.processPing();
+        } else {
+            responseCode = 404;
+            message = "Not Found";
+            body = "Resource not found: " + req.getPath();
+        }
+
+        //String body = "HTML page :) " + req.getPath();
         List<String> headersList = new ArrayList<>();
         headersList.add("Server: Mantas Java HTTP Server 1.0");
         headersList.add("Date:" + new Date());
         headersList.add("Content-type: text/html");
         headersList.add("Content-length: " + body.length());
-        HttpResponse resp = new HttpResponse(200, "OK", headersList, body);
+        HttpResponse resp = new HttpResponse(responseCode, message, headersList, body);
 
         return resp;
     }

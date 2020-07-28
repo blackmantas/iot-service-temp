@@ -17,11 +17,13 @@ public class Server {
             System.exit(1);
         }
 
+        Controller controller = new Controller();
+
         while (true) {
             try {
                 socket = serverSocket.accept();
 //                new EchoThread(socket).start();
-                new HttpThread(socket).start();
+                new HttpThread(socket, controller).start();
             } catch (IOException e) {
                 e.printStackTrace();
             }

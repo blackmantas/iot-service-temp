@@ -7,16 +7,16 @@ import java.util.List;
 
 public class Controller {
 
-    private String processPing() {
+    public String processPing() {
         return "OK: " + new Date();
     }
-    private List<Temperature> listTemperatures() {
+    public List<Temperature> listTemperatures() {
         throw new UnsupportedOperationException("Not implemented");
     }
-    private Temperature getTemperature(String id) {
+    public Temperature getTemperature(String id) {
         throw new UnsupportedOperationException("Not implemented");
     }
-    private List<Temperature> createTemperature(List<Temperature> list) {
+    public List<Temperature> createTemperature(List<Temperature> list) {
         throw new UnsupportedOperationException("Not implemented");
     }
 }
