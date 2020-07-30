@@ -116,6 +116,7 @@ public class HttpThread extends Thread {
 //            body = gson.toJson(controller.listTemperatures().toArray(), Temperature[].class);
             body = gson.toJson(controller.listTemperatures());
         } else {
+            contentType = "text/plain";
             responseCode = 404;
             message = "Not Found";
             body = "Resource not found: " + req.getPath();

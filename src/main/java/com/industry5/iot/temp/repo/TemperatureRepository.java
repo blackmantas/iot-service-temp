@@ -2,10 +2,7 @@ package com.industry5.iot.temp.repo;
 
 import com.industry5.iot.temp.domain.Temperature;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 public class TemperatureRepository {
 
@@ -22,5 +19,21 @@ public class TemperatureRepository {
                 new Temperature("123", 25.4, "123", new Date(), null),
                 new Temperature("666", 66.6, "666", new Date(), Arrays.asList(13, 6))
         );
+    }
+
+    public List<Temperature> persistTemperatures(List<Temperature> list) {
+        List<Temperature> result = new LinkedList<>();
+
+        for (Temperature t : list) {
+            String id = UUID.randomUUID().toString();
+
+            // TODO save temperature to DB
+            // TODO get saved row Id
+
+            Temperature tp = new Temperature(id, t.getTemperature(), t.getSensorId(), t.getDateTime(), t.getErrorCodes());
+            result.add(tp);
+        }
+
+        return result;
     }
 }
