@@ -23,7 +23,8 @@ public class Controller {
     }
 
     public Temperature getTemperature(String id) {
-        throw new UnsupportedOperationException("Not implemented");
+        //throw new UnsupportedOperationException("Not implemented");
+        return repository.findById(id);
     }
 
     public List<Temperature> createTemperature(List<Temperature> list) {

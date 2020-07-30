@@ -10,9 +10,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class HttpThread extends Thread {
     public static final String NL = "\n";
+
+    private static final Pattern PING_PATTERN = Pattern.compile("^/ping/?(\\?.*)?$");
+    private static final Pattern SINGLE_TEMP_PATTERN = Pattern.compile("^/temp/([a-zA-Z0-9-]+)/?(\\?.*)?$");
+    private static final Pattern TEMP_LIST_PATTERN = Pattern.compile("^/temp/?(\\?.*)?$");
 
     private final Socket socket;
     private final Controller controller;
@@ -95,10 +101,18 @@ public class HttpThread extends Thread {
         String body;
         String contentType = "application/json";
 
-        if ("/ping".equals(req.getPath())) {
+
+        Matcher matcherTemp = SINGLE_TEMP_PATTERN.matcher(req.getPath());
+
+//        if ("/ping".equals(req.getPath())) {
+        if (PING_PATTERN.matcher(req.getPath()).matches()) {
             contentType = "text/plain";
             body = controller.processPing();
-        } else if ("/temp".equals(req.getPath())) {
+        } else if (matcherTemp.matches()) {
+            String tempId = matcherTemp.group(1);
+            body = gson.toJson(controller.getTemperature(tempId));
+//        } else if ("/temp".equals(req.getPath())) {
+        } else if (TEMP_LIST_PATTERN.matcher(req.getPath()).matches()) {
 //            body = gson.toJson(controller.listTemperatures().toArray(), Temperature[].class);
             body = gson.toJson(controller.listTemperatures());
         } else {
