@@ -1,22 +1,23 @@
 package com.industry5.iot.temp;
 
 import java.util.List;
+import java.util.Map;
 
 public class HttpRequest {
 
-    private List<String> headers;
+    private Map<String, String> headers;
     private String body;
     private HttpMethod method;
     private String path;
 
-    public HttpRequest(List<String> headers, String body, HttpMethod method, String path) {
+    public HttpRequest(Map<String, String> headers, String body, HttpMethod method, String path) {
         this.headers = headers;
         this.body = body;
         this.method = method;
         this.path = path;
     }
 
-    public List<String> getHeaders() {
+    public Map<String, String> getHeaders() {
         return headers;
     }
 

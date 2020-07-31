@@ -2,14 +2,10 @@ package com.industry5.iot.temp;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.industry5.iot.temp.domain.Temperature;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,7 +54,7 @@ public class HttpThread extends Thread {
 
     private HttpRequest parseHttpRequest(BufferedReader reader) throws IOException {
 
-        List<String> list = new ArrayList<>();
+        Map<String, String> headers = new HashMap<>();
         HttpMethod method;
         String path;
 
@@ -82,9 +78,11 @@ public class HttpThread extends Thread {
             if (line.trim().length() == 0) {
                 break;
             }
-            list.add(line);
+            String[] parts = line.split(": ", 2);
+            headers.put(parts[0], parts[1]);
         }
-        return new HttpRequest(list, null, method, path);
+        System.out.println(headers);
+        return new HttpRequest(headers, null, method, path);
     }
 
     private HttpResponse processHttpRequest(HttpRequest req) throws IOException {
