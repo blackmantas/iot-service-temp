@@ -11,8 +11,8 @@ public class Temperature {
     private Date dateTime;
     private List<Integer> errorCodes;
 
-    public Temperature() {
-    }
+//    public Temperature() {
+//    }
 
     public Temperature(String id, double temperature, String sensorId, Date dateTime, List<Integer> errorCodes) {
         this.id = id;
@@ -20,6 +20,14 @@ public class Temperature {
         this.sensorId = sensorId;
         this.dateTime = dateTime;
         this.errorCodes = errorCodes;
+    }
+
+    public Temperature(String id, double temperature, String sensorId, Date dateTime) {
+        this.id = id;
+        this.temperature = temperature;
+        this.sensorId = sensorId;
+        this.dateTime = dateTime;
+//        this.errorCodes = errorCodes;
     }
 
     public String getId() {
@@ -40,5 +48,16 @@ public class Temperature {
 
     public List<Integer> getErrorCodes() {
         return errorCodes;
+    }
+
+    @Override
+    public String toString() {
+        return "Temperature{" +
+                "id='" + id + '\'' +
+                ", temperature=" + temperature +
+                ", sensorId='" + sensorId + '\'' +
+                ", dateTime=" + dateTime +
+                ", errorCodes=" + errorCodes +
+                '}';
     }
 }

@@ -2,8 +2,11 @@ package com.industry5.iot.temp;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+import com.industry5.iot.temp.domain.Temperature;
 
 import java.io.*;
+import java.lang.reflect.Type;
 import java.net.Socket;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -75,8 +78,8 @@ public class HttpThread extends Thread {
                 socket.close();
                 throw new IOException("Error: socket closed");
             }
-            if (line.trim().length() == 0) {
-                break;
+            if (line.trim().length() == 0) {    //empty line found, below might be request body (payload)
+                break;  //TODO read request body
             }
             String[] parts = line.split(": ", 2);
             headers.put(parts[0], parts[1]);
@@ -89,6 +92,8 @@ public class HttpThread extends Thread {
         switch (req.getMethod()) {
             case GET:
                 return routeGetRequest(req, controller);
+            case POST:
+                return routePostRequest(req, controller);
             default:
                 throw new IOException("Unsupported HTTP method: " + req.getMethod());
         }
@@ -113,11 +118,13 @@ public class HttpThread extends Thread {
             body = controller.processPing();
         } else if (matcherTemp.matches()) {
             String tempId = matcherTemp.group(1);
-            body = gson.toJson(controller.getTemperature(tempId));
+            Temperature temperature = controller.getTemperature(tempId);
+            body = gson.toJson(temperature);
 //        } else if ("/temp".equals(req.getPath())) {
         } else if (TEMP_LIST_PATTERN.matcher(req.getPath()).matches()) {
 //            body = gson.toJson(controller.listTemperatures().toArray(), Temperature[].class);
-            body = gson.toJson(controller.listTemperatures());
+            List<Temperature> temperatureList = controller.listTemperatures();
+            body = gson.toJson(temperatureList);
         } else {
             contentType = "text/plain";
             responseCode = 404;
@@ -126,6 +133,39 @@ public class HttpThread extends Thread {
         }
 
         //String body = "HTML page :) " + req.getPath();
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Server", "Mantas Java HTTP Server 1.0");
+        headers.put("Date", new Date().toString());
+        headers.put("Content-type", contentType);
+        headers.put("Content-length", String.valueOf(body.length()));
+        HttpResponse resp = new HttpResponse(responseCode, message, headers, body);
+
+        return resp;
+    }
+
+    private HttpResponse routePostRequest(HttpRequest req, Controller controller) {
+
+        GsonBuilder builder = new GsonBuilder(); // TODO : move out of this place
+        Gson gson = builder.serializeNulls().create();
+
+        int responseCode = 200;
+        String message = "OK";
+        String body;
+        String contentType = "application/json";
+
+        if (TEMP_LIST_PATTERN.matcher(req.getPath()).matches()) {
+            Type listType = new TypeToken<ArrayList<Temperature>>(){}.getType();
+            List<Temperature> temperatureList = new Gson().fromJson(req.getBody(), listType);
+
+            List<Temperature> result = controller.createTemperature(temperatureList);
+            body = gson.toJson(result);
+        } else {
+            contentType = "text/plain";
+            responseCode = 404;
+            message = "Not Found";
+            body = "Resource not found: " + req.getPath();
+        }
+
         Map<String, String> headers = new HashMap<>();
         headers.put("Server", "Mantas Java HTTP Server 1.0");
         headers.put("Date", new Date().toString());
