@@ -64,6 +64,11 @@ public class HttpThread extends Thread {
 
         String firstLine = reader.readLine();
 
+        if (firstLine == null) {
+            socket.close();
+            throw new IOException("Error: socket closed");
+        }
+
         StringTokenizer tokenizer = new StringTokenizer(firstLine);
         method = HttpMethod.valueOf(tokenizer.nextToken());
         path = tokenizer.nextToken();
