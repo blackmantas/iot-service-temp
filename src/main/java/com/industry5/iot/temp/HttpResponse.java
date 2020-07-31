@@ -1,14 +1,15 @@
 package com.industry5.iot.temp;
 
 import java.util.List;
+import java.util.Map;
 
 public class HttpResponse {
     private int statusCode;
     private String message;
-    private List<String> headers;
+    private Map<String, String> headers;
     private String body;
 
-    public HttpResponse(int statusCode, String message, List<String> headers, String body) {
+    public HttpResponse(int statusCode, String message, Map<String, String> headers, String body) {
         this.statusCode = statusCode;
         this.message = message;
         this.headers = headers;
@@ -23,7 +24,7 @@ public class HttpResponse {
         return message;
     }
 
-    public List<String> getHeaders() {
+    public Map<String, String> getHeaders() {
         return headers;
     }
 

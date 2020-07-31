@@ -126,12 +126,12 @@ public class HttpThread extends Thread {
         }
 
         //String body = "HTML page :) " + req.getPath();
-        List<String> headersList = new ArrayList<>();
-        headersList.add("Server: Mantas Java HTTP Server 1.0");
-        headersList.add("Date:" + new Date());
-        headersList.add("Content-type: " + contentType);
-        headersList.add("Content-length: " + body.length());
-        HttpResponse resp = new HttpResponse(responseCode, message, headersList, body);
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Server", "Mantas Java HTTP Server 1.0");
+        headers.put("Date", new Date().toString());
+        headers.put("Content-type", contentType);
+        headers.put("Content-length", String.valueOf(body.length()));
+        HttpResponse resp = new HttpResponse(responseCode, message, headers, body);
 
         return resp;
     }
@@ -139,8 +139,9 @@ public class HttpThread extends Thread {
     private void writeHttpResponse(HttpResponse resp, DataOutputStream out) throws IOException {
 
         out.writeBytes("HTTP/1.1 " + resp.getStatusCode() + " " + resp.getMessage() + NL);
-        for (String header : resp.getHeaders()) {
-            out.writeBytes(header + NL);
+        Map<String, String> headers = resp.getHeaders();
+        for (String key : headers.keySet()) {
+            out.writeBytes(key + ": " + headers.get(key) + NL);
         }
         out.writeBytes(NL);
         out.flush();
