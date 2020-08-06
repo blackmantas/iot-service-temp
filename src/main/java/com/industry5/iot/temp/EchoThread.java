@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.Socket;
 
 public class EchoThread extends Thread {
+    private static final Logger log = new Logger(EchoThread.class);
+
     protected Socket socket;
 
     public EchoThread(Socket socket) {
@@ -34,7 +36,7 @@ public class EchoThread extends Thread {
         while (true) {
             try {
                 line = brinp.readLine();
-                System.out.println(line);
+                log.debug(line);
 
                 if ((line == null) || line.equalsIgnoreCase("QUIT")) {
                     socket.close();

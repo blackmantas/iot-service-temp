@@ -12,7 +12,11 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.industry5.iot.temp.HttpParser.HEADER_CONTENT_LENGTH;
+
 public class HttpThread extends Thread {
+    private static final Logger log = new Logger(HttpThread.class);
+
     public static final String NL = "\n";
 
     private static final Pattern PING_PATTERN = Pattern.compile("^/ping/?(\\?.*)?$");
@@ -21,11 +25,17 @@ public class HttpThread extends Thread {
 
     private final Socket socket;
     private final Controller controller;
+    private final HttpParser httpParser;
+    private final String workerName;
 
-    public HttpThread(Socket socket, Controller controller) {
-        System.out.println("Starting HTTP thread: " + currentThread().getName());
+
+    public HttpThread(String workerName, Socket socket, Controller controller, HttpParser httpParser) {
+        super(workerName);
+        this.workerName = workerName;
+        log.debug("___:: Starting HTTP thread: " + currentThread().getName() + "(" + workerName + ") :: (" + socket + ", hashCode=" + socket.hashCode() + ")");
         this.socket = socket;
         this.controller = controller;
+        this.httpParser = httpParser;
     }
 
     @Override
@@ -35,16 +45,21 @@ public class HttpThread extends Thread {
              InputStreamReader inputStream = new InputStreamReader(socket.getInputStream());
              BufferedReader reader = new BufferedReader(inputStream)) {
 
-            HttpRequest httpRequest = parseHttpRequest(reader);
-            System.out.println(httpRequest);
+            HttpRequest httpRequest = httpParser.parseHttpRequest(reader);
+//            HttpRequest httpRequest = parseHttpRequest(reader);
+
+            log.debug(httpRequest);
 
             HttpResponse resp = processHttpRequest(httpRequest);
-            System.out.println(resp);
+            log.debug(resp);
 
             writeHttpResponse(resp, dataOutput);
 
         } catch (IOException e) {
+            log.error("HttpThread.run(): [" + workerName + "]: " + e.getMessage());
             e.printStackTrace();
+        } catch (EmptySocketException e) {
+            log.info("Socket has no data: " + e.getMessage());
         } finally {
             try {
                 socket.close();
@@ -55,45 +70,14 @@ public class HttpThread extends Thread {
 
     }
 
-    private HttpRequest parseHttpRequest(BufferedReader reader) throws IOException {
-
-        Map<String, String> headers = new HashMap<>();
-        HttpMethod method;
-        String path;
-
-        String firstLine = reader.readLine();
-
-        if (firstLine == null) {
-            socket.close();
-            throw new IOException("Error: socket closed");
-        }
-
-        StringTokenizer tokenizer = new StringTokenizer(firstLine);
-        method = HttpMethod.valueOf(tokenizer.nextToken());
-        path = tokenizer.nextToken();
-
-        while (true) {
-            String line = reader.readLine();
-            if (line == null) {
-                socket.close();
-                throw new IOException("Error: socket closed");
-            }
-            if (line.trim().length() == 0) {    //empty line found, below might be request body (payload)
-                break;  //TODO read request body
-            }
-            String[] parts = line.split(": ", 2);
-            headers.put(parts[0], parts[1]);
-        }
-        System.out.println(headers);
-        return new HttpRequest(headers, null, method, path);
-    }
-
     private HttpResponse processHttpRequest(HttpRequest req) throws IOException {
         switch (req.getMethod()) {
             case GET:
                 return routeGetRequest(req, controller);
             case POST:
                 return routePostRequest(req, controller);
+            case OPTIONS:
+                return routeOptionsRequest(req, controller);
             default:
                 throw new IOException("Unsupported HTTP method: " + req.getMethod());
         }
@@ -109,10 +93,8 @@ public class HttpThread extends Thread {
         String body;
         String contentType = "application/json";
 
-
         Matcher matcherTemp = SINGLE_TEMP_PATTERN.matcher(req.getPath());
 
-//        if ("/ping".equals(req.getPath())) {
         if (PING_PATTERN.matcher(req.getPath()).matches()) {
             contentType = "text/plain";
             body = controller.processPing();
@@ -120,9 +102,7 @@ public class HttpThread extends Thread {
             String tempId = matcherTemp.group(1);
             Temperature temperature = controller.getTemperature(tempId);
             body = gson.toJson(temperature);
-//        } else if ("/temp".equals(req.getPath())) {
         } else if (TEMP_LIST_PATTERN.matcher(req.getPath()).matches()) {
-//            body = gson.toJson(controller.listTemperatures().toArray(), Temperature[].class);
             List<Temperature> temperatureList = controller.listTemperatures();
             body = gson.toJson(temperatureList);
         } else {
@@ -132,12 +112,8 @@ public class HttpThread extends Thread {
             body = "Resource not found: " + req.getPath();
         }
 
-        //String body = "HTML page :) " + req.getPath();
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Server", "Mantas Java HTTP Server 1.0");
-        headers.put("Date", new Date().toString());
-        headers.put("Content-type", contentType);
-        headers.put("Content-length", String.valueOf(body.length()));
+        Map<String, String> headers = defaultResponseHeaders(contentType, body.length());
+
         HttpResponse resp = new HttpResponse(responseCode, message, headers, body);
 
         return resp;
@@ -146,7 +122,7 @@ public class HttpThread extends Thread {
     private HttpResponse routePostRequest(HttpRequest req, Controller controller) {
 
         GsonBuilder builder = new GsonBuilder(); // TODO : move out of this place
-        Gson gson = builder.serializeNulls().create();
+        Gson gson = builder.create();
 
         int responseCode = 200;
         String message = "OK";
@@ -154,8 +130,13 @@ public class HttpThread extends Thread {
         String contentType = "application/json";
 
         if (TEMP_LIST_PATTERN.matcher(req.getPath()).matches()) {
-            Type listType = new TypeToken<ArrayList<Temperature>>(){}.getType();
+            Type listType = new TypeToken<ArrayList<Temperature>>() {
+            }.getType();
             List<Temperature> temperatureList = new Gson().fromJson(req.getBody(), listType);
+
+            if (temperatureList == null) { // TODO can GSON return empty list?
+                temperatureList = Collections.emptyList();
+            }
 
             List<Temperature> result = controller.createTemperature(temperatureList);
             body = gson.toJson(result);
@@ -166,14 +147,38 @@ public class HttpThread extends Thread {
             body = "Resource not found: " + req.getPath();
         }
 
+        Map<String, String> headers = defaultResponseHeaders(contentType, body.length());
+
+        HttpResponse resp = new HttpResponse(responseCode, message, headers, body);
+
+        return resp;
+    }
+
+    // experimental yet vulnerable method, for CORS testing only
+    private HttpResponse routeOptionsRequest(HttpRequest req, Controller controller) {
+        int responseCode = 204;
+        String message = "No content";
+        String body = "";
+        String contentType = "application/json";
+
+        Map<String, String> headers = defaultResponseHeaders(contentType, body.length());
+        headers.put("Access-Control-Allow-Origin", "*");
+        headers.put("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+        headers.put("Access-Control-Allow-Headers", "Content-type");
+
+        HttpResponse resp = new HttpResponse(responseCode, message, headers, body);
+
+        return resp;
+    }
+
+    private Map<String, String> defaultResponseHeaders(String contentType, int contentLength) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Server", "Mantas Java HTTP Server 1.0");
         headers.put("Date", new Date().toString());
         headers.put("Content-type", contentType);
-        headers.put("Content-length", String.valueOf(body.length()));
-        HttpResponse resp = new HttpResponse(responseCode, message, headers, body);
-
-        return resp;
+        headers.put("Content-length", String.valueOf(contentLength));
+        headers.put("Access-Control-Allow-Origin", "*");    // HACK, for testing only
+        return headers;
     }
 
     private void writeHttpResponse(HttpResponse resp, DataOutputStream out) throws IOException {
@@ -181,11 +186,16 @@ public class HttpThread extends Thread {
         out.writeBytes("HTTP/1.1 " + resp.getStatusCode() + " " + resp.getMessage() + NL);
         Map<String, String> headers = resp.getHeaders();
         for (String key : headers.keySet()) {
-            out.writeBytes(key + ": " + headers.get(key) + NL);
+            String outputLine = key + ": " + headers.get(key);
+            log.debug("header => "+outputLine);
+            out.writeBytes(outputLine + NL);
         }
         out.writeBytes(NL);
-        out.flush();
-        out.writeBytes(resp.getBody() + NL);
+        String responsePacket = resp.getBody() == null ? "" : resp.getBody();
+        log.debug("responsePacket.length()=" + responsePacket.length());
+        log.debug("responsePacket=" + responsePacket);
+        out.writeBytes(responsePacket + NL);
         out.flush();
     }
 }
+

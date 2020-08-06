@@ -7,6 +7,11 @@ public class Application {
     public static void main(String[] args) {
         System.out.println("Simple HTTP/TCP server started.");
         System.out.println("Copyright (c) 2020 Mantas");
+
+        // initial settings
+        Logger.setLevel(Logger.Level.DEBUG);
+
+        // start server
         Server server = new Server();
         server.startServer(PORT);
     }

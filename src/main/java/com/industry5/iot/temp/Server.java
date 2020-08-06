@@ -7,6 +7,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Server {
+    private static final Logger log = new Logger(Server.class);
 
     public void startServer(int port) {
         ServerSocket serverSocket = null;
@@ -20,13 +21,18 @@ public class Server {
         }
 
         Controller controller = new Controller(new TemperatureRepository());
+        HttpParser httpParser = new DefaultHttpParser();
 
+        int workerSeq = 0;
         while (true) {
             try {
                 socket = serverSocket.accept();
+                String workerName = "Worker " + workerSeq + "-" + System.nanoTime();
+                workerSeq++;
 //                new EchoThread(socket).start();
-                new HttpThread(socket, controller).start();
+                new HttpThread(workerName, socket, controller, httpParser).start();
             } catch (IOException e) {
+                log.error("ERROR in Server: " + e.getMessage());
                 e.printStackTrace();
             }
         }
