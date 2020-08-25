@@ -85,49 +85,44 @@ public class HttpThread extends Thread {
 
     private HttpResponse routeGetRequest(HttpRequest req, Controller controller) {
 
-        GsonBuilder builder = new GsonBuilder(); // TODO : move out of this place
-        Gson gson = builder.serializeNulls().create();
+        GsonBuilder gsonBuilder = new GsonBuilder(); // TODO : move out of this place
+        Gson gson = gsonBuilder.serializeNulls().create();
 
-        int responseCode = 200;
-        String message = "OK";
-        String body;
-        String contentType = "application/json";
+        HttpResponse.Builder builder = new HttpResponse.Builder()
+                .ok()
+                .headers(defaultResponseHeaders());
 
         Matcher matcherTemp = SINGLE_TEMP_PATTERN.matcher(req.getPath());
 
         if (PING_PATTERN.matcher(req.getPath()).matches()) {
-            contentType = "text/plain";
-            body = controller.processPing();
+            builder.contentType("text/plain")
+                    .body(controller.processPing());
+
         } else if (matcherTemp.matches()) {
             String tempId = matcherTemp.group(1);
             Temperature temperature = controller.getTemperature(tempId);
-            body = gson.toJson(temperature);
+            builder.contentType("application/json")
+                    .body(gson.toJson(temperature));
         } else if (TEMP_LIST_PATTERN.matcher(req.getPath()).matches()) {
             List<Temperature> temperatureList = controller.listTemperatures();
-            body = gson.toJson(temperatureList);
+            builder.contentType("application/json")
+                    .body(gson.toJson(temperatureList));
         } else {
-            contentType = "text/plain";
-            responseCode = 404;
-            message = "Not Found";
-            body = "Resource not found: " + req.getPath();
+            builder.notFound()
+                    .contentType("text/plain")
+                    .body("Resource not found: " + req.getPath());
         }
 
-        Map<String, String> headers = defaultResponseHeaders(contentType, body.length());
-
-        HttpResponse resp = new HttpResponse(responseCode, message, headers, body);
-
+        HttpResponse resp = builder.build();
         return resp;
     }
 
     private HttpResponse routePostRequest(HttpRequest req, Controller controller) {
 
-        GsonBuilder builder = new GsonBuilder(); // TODO : move out of this place
-        Gson gson = builder.create();
+        GsonBuilder gsonBuilder = new GsonBuilder(); // TODO : move out of this place
+        Gson gson = gsonBuilder.create();
 
-        int responseCode = 200;
-        String message = "OK";
-        String body;
-        String contentType = "application/json";
+        HttpResponse.Builder builder = new HttpResponse.Builder().ok().headers(defaultResponseHeaders());
 
         if (TEMP_LIST_PATTERN.matcher(req.getPath()).matches()) {
             Type listType = new TypeToken<ArrayList<Temperature>>() {
@@ -139,44 +134,37 @@ public class HttpThread extends Thread {
             }
 
             List<Temperature> result = controller.createTemperature(temperatureList);
-            body = gson.toJson(result);
+            builder.contentType("application/json").body(gson.toJson(result));
         } else {
-            contentType = "text/plain";
-            responseCode = 404;
-            message = "Not Found";
-            body = "Resource not found: " + req.getPath();
+            builder.contentType("text/plain").notFound().body("Resource not found: " + req.getPath());
         }
 
-        Map<String, String> headers = defaultResponseHeaders(contentType, body.length());
-
-        HttpResponse resp = new HttpResponse(responseCode, message, headers, body);
+        HttpResponse resp = builder.build();
 
         return resp;
     }
 
     // experimental yet vulnerable method, for CORS testing only
     private HttpResponse routeOptionsRequest(HttpRequest req, Controller controller) {
-        int responseCode = 204;
-        String message = "No content";
-        String body = "";
-        String contentType = "application/json";
+        HttpResponse.Builder builder = new HttpResponse.Builder();
 
-        Map<String, String> headers = defaultResponseHeaders(contentType, body.length());
-        headers.put("Access-Control-Allow-Origin", "*");
-        headers.put("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-        headers.put("Access-Control-Allow-Headers", "Content-type");
+        builder.statusCode(204)
+                .message("No content")
+                .contentType("application/json")
+                .headers(defaultResponseHeaders())
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+                .header("Access-Control-Allow-Headers", "Content-type");
 
-        HttpResponse resp = new HttpResponse(responseCode, message, headers, body);
+        HttpResponse resp = builder.build();
 
         return resp;
     }
 
-    private Map<String, String> defaultResponseHeaders(String contentType, int contentLength) {
+    private Map<String, String> defaultResponseHeaders() {
         Map<String, String> headers = new HashMap<>();
         headers.put("Server", "Mantas Java HTTP Server 1.0");
         headers.put("Date", new Date().toString());
-        headers.put("Content-type", contentType);
-        headers.put("Content-length", String.valueOf(contentLength));
         headers.put("Access-Control-Allow-Origin", "*");    // HACK, for testing only
         return headers;
     }
@@ -187,7 +175,7 @@ public class HttpThread extends Thread {
         Map<String, String> headers = resp.getHeaders();
         for (String key : headers.keySet()) {
             String outputLine = key + ": " + headers.get(key);
-            log.debug("header => "+outputLine);
+            log.debug("header => " + outputLine);
             out.writeBytes(outputLine + NL);
         }
         out.writeBytes(NL);
